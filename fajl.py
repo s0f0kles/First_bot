@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from config import TOKEN
 import random
 from bot_logic import gen_emodji, gen_pass, flip_coin
@@ -41,6 +41,48 @@ class MyContext(commands.Context):
             await self.message.add_reaction(emoji)
         except discord.HTTPException:
             pass
+
+
+@tasks.loop(seconds=5)  # Adjust the interval as needed
+async def my_background_task():
+    # Your background task logic goes here
+    print("Background task running...")
+
+# Event triggered when the bot is ready
+@bot.event
+async def on_ready():
+    print(f'We have logged in as {bot.user}')
+    await bot.setup_hook()  # set up the app commands hook
+    my_background_task.start()  # Start the background task
+
+# Event triggered when a message is received
+@bot.event
+async def on_message(message):
+    # Your existing on_message logic here
+
+    await bot.tree.process_interaction(message)  # process the app commands interaction
+
+# Your existing commands and classes here
+
+# Stop the background task when the bot is shutting down
+@bot.event
+async def on_shutdown():
+    my_background_task.stop()
+
+
+bot.command()
+async def status(ctx):
+    """Check the status of the background task."""
+    if my_background_task.is_running():
+        await ctx.send("The background task is running.")
+    else:
+        await ctx.send("The background task is not running.")
+
+# Stop the background task when the bot is shutting down
+@bot.event
+async def on_shutdown():
+    my_background_task.stop()
+
 
 bot.tree = app_commands.Tree(bot) # create the app commands tree
 bot.run(TOKEN)
